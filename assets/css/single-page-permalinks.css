@@ -1,0 +1,35 @@
+@keyframes slideInFromTop { from { transform: translateY(-110%); }
+  to { transform: translateY(0); } }
+
+.singlepagepermalinks-slideInFromTop { animation: slideInFromTop 0.2s both ease-in; }
+
+@keyframes slideInFromRight { from { transform: translateX(110%); }
+  to { transform: translateX(0); } }
+
+.singlepagepermalinks-slideInFromRight { animation: slideInFromRight 0.2s both ease-in; }
+
+@keyframes slideInFromBottom { from { transform: translateY(110%); }
+  to { transform: translateY(0); } }
+
+.singlepagepermalinks-slideInFromBottom { animation: slideInFromBottom 0.2s both ease-in; }
+
+@keyframes slideInFromLeft { from { transform: translateX(-110%); }
+  to { transform: translateX(0); } }
+
+.singlepagepermalinks-slideInFromLeft { animation: slideInFromLeft 0.2s both ease-in; }
+
+@keyframes slideOutToTop { to { transform: translateY(-110%); } }
+
+.singlepagepermalinks-slideOutToTop { animation: slideOutToTop 0.2s both ease-in; }
+
+@keyframes slideOutToRight { to { transform: translateX(110%); } }
+
+.singlepagepermalinks-slideOutToRight { animation: slideOutToRight 0.2s both ease-in; }
+
+@keyframes slideOutToBottom { to { transform: translateY(110%); } }
+
+.singlepagepermalinks-slideOutToBottom { animation: slideOutToBottom 0.2s both ease-in; }
+
+@keyframes slideOutToLeft { to { transform: translateX(-110%); } }
+
+.singlepagepermalinks-slideOutToLeft { animation: slideOutToLeft 0.2s both ease-in; }

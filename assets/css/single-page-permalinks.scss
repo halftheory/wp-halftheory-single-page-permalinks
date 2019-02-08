@@ -1,0 +1,43 @@
+$prefix: 'singlepagepermalinks';
+
+// animations
+@mixin make-animation($name, $duration: 0.2) {
+	@keyframes #{$name} {
+		@content;
+	}
+	.#{$prefix}-#{$name} {
+		animation: #{$name} #{$duration}s both ease-in;
+	}
+}
+
+// open
+@include make-animation('slideInFromTop') {
+	from { transform:translateY(-110%); }
+	to { transform: translateY(0); }
+}
+@include make-animation('slideInFromRight') {
+	from { transform:translateX(110%); }
+	to { transform: translateX(0); }
+}
+@include make-animation('slideInFromBottom') {
+	from { transform:translateY(110%); }
+	to { transform: translateY(0); }
+}
+@include make-animation('slideInFromLeft') {
+	from { transform:translateX(-110%); }
+	to { transform: translateX(0); }
+}
+
+// close
+@include make-animation('slideOutToTop') {
+	to { transform: translateY(-110%); }
+}
+@include make-animation('slideOutToRight') {
+	to { transform: translateX(110%); }
+}
+@include make-animation('slideOutToBottom') {
+	to { transform: translateY(110%); }
+}
+@include make-animation('slideOutToLeft') {
+	to { transform: translateX(-110%); }
+}
