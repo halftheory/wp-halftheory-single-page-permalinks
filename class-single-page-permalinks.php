@@ -246,7 +246,6 @@ class Single_Page_Permalinks {
         <div class="postbox">
         	<div class="inside">
 	            <h4>URLs</h4>
-	            <p><span class="description"><?php _e('The base URL for all Single Page Permalinks. Defaults to network_home_url("/").'); ?></span></p>
 
 	            <?php
 	            if (empty($options['home_url'])) {
@@ -254,7 +253,8 @@ class Single_Page_Permalinks {
 	            }
 	            ?>
 	            <p><label for="<?php echo $plugin->prefix; ?>_home_url" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Home URL'); ?></label>
-	            <input type="text" name="<?php echo $plugin->prefix; ?>_home_url" id="<?php echo $plugin->prefix; ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /></p>
+	            <input type="text" name="<?php echo $plugin->prefix; ?>_home_url" id="<?php echo $plugin->prefix; ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /><br />
+	        	<span class="description small" style="margin-left: 10em;"><?php _e('The base URL for all Single Page Permalinks. Defaults to network_home_url("/").'); ?></span></p>
 
 		        <p><label for="<?php echo $plugin->prefix; ?>_redirect_urls"><input type="checkbox" id="<?php echo $plugin->prefix; ?>_redirect_urls" name="<?php echo $plugin->prefix; ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], 1); ?> /> Redirect normal permalinks to Single Page Permalinks?</label></p>
 
@@ -326,7 +326,7 @@ class Single_Page_Permalinks {
 		</div>
 
         <p class="submit">
-            <input type="submit" value="Update" id="publish" class="button button-primary button-large" name="save">
+            <input type="submit" value="<?php _e('Update'); ?>" id="publish" class="button button-primary button-large" name="save">
         </p>
 
         </div><!-- poststuff -->
@@ -431,21 +431,26 @@ class Single_Page_Permalinks {
 	    if (!isset($_REQUEST['post_name'])) {
 	    	exit;
 	    }
-	    if (empty($_REQUEST['post_name'])) {
-	    	exit;
-	    }
-		// posts
 		$args = array(
 			'no_found_rows' => true,
 			'nopaging' => true,
 			'ignore_sticky_posts' => true,
 			'post_status' => 'publish,inherit',
 			'post_type' => $this->get_option('post_types', array()),
-			'orderby' => 'title', // menu_order
+			'orderby' => 'title',
 			'order' => 'ASC',
 			'suppress_filters' => false,
-			'name' => $_REQUEST['post_name'],
         );
+		if (is_numeric($_REQUEST['post_name']) && $_REQUEST['post_name'] == 0) {
+			$args['include'] = get_option('page_on_front');
+		}
+		elseif (!empty($_REQUEST['post_name'])) {
+			$args['name'] = $_REQUEST['post_name'];
+		}
+		else {
+			exit;
+		}
+		// posts
 		$posts = get_posts($args);
 		if (empty($posts)) {
 			exit;
