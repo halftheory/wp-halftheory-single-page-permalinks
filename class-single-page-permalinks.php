@@ -349,11 +349,13 @@ class Single_Page_Permalinks {
 		if ($url = $this->singlepagepermalink()) {
 			$current_url = trailingslashit(remove_query_arg(array_keys($_GET), $this->get_current_uri()));
 			$redirect_urls = $this->get_option('redirect_urls', false);
-			if (!empty($redirect_urls) && $current_url != $this->get_home_url()) {
+			if ($current_url == $this->get_home_url()) {
+				$this->enqueue_scripts = true;
+			}
+			elseif (!empty($redirect_urls) && $current_url != $this->get_home_url()) {
 				wp_redirect($url);
 				exit();
 			}
-			$this->enqueue_scripts = true;
 		}
 	}
 
@@ -459,6 +461,7 @@ class Single_Page_Permalinks {
 		$templates = array(
 			$this->prefix.'-'.$posts[0]->post_type.'.php',
 			$this->prefix.'.php',
+			'partials/'.$posts[0]->post_type.'.php',
 			$posts[0]->post_type.'.php',
 			'index.php',
 		);
