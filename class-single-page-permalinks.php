@@ -361,7 +361,7 @@ class Single_Page_Permalinks {
 		if (!$this->enqueue_scripts) {
 			return;
 		}
-		wp_enqueue_script($this->prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.js', __FILE__), array('jquery'), null, true);
+		wp_enqueue_script($this->prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), null, true);
 		$data = array(
 			'ajaxurl' => esc_url(admin_url().'admin-ajax.php'),
 		    'prefix' => $this->prefix,
