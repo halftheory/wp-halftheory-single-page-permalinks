@@ -86,13 +86,16 @@
 
 		// open
 		function postOpen(hash) {
+			if (hash !== 0) {
+				hash = hash.replace(/[^A-Za-z0-9-]/,'').toLowerCase();
+			}
 			if (currentHash === hash) {
 				return;
 			}
 			var openID = false;
 
 			var postOpenEnd = function() {
-				if (openID === false) {
+				if (openID === false || openID === undefined) {
 					return;
 				}
 				// close open post?
