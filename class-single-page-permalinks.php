@@ -19,9 +19,8 @@ class Single_Page_Permalinks {
 	public function __construct() {
 		$this->plugin_name = get_called_class();
 		$this->plugin_title = ucwords(str_replace('_', ' ', $this->plugin_name));
-		$this->prefix = sanitize_key($this->plugin_name);
-		$this->prefix = preg_replace("/[^a-z0-9]/", "", $this->prefix);
-		self::$prefix = $this->prefix;
+		self::$prefix = sanitize_key($this->plugin_name);
+		self::$prefix = preg_replace("/[^a-z0-9]/", "", self::$prefix);
 
 		// admin options
 		if (!$this->is_front_end()) {
@@ -55,8 +54,8 @@ class Single_Page_Permalinks {
 			add_filter('page_link', array($this,'post_link'), 20, 3);
 			add_filter('post_type_link', array($this,'post_link'), 20, 3);
 			// ajax
-        	add_action('wp_ajax_'.$this->prefix.'_get_post', array($this, 'ajax_get_post'));
-        	add_action('wp_ajax_nopriv_'.$this->prefix.'_get_post', array($this, 'ajax_get_post'));
+        	add_action('wp_ajax_'.self::$prefix.'_get_post', array($this, 'ajax_get_post'));
+        	add_action('wp_ajax_nopriv_'.self::$prefix.'_get_post', array($this, 'ajax_get_post'));
 		}
 	}
 
@@ -120,7 +119,7 @@ class Single_Page_Permalinks {
 		}
 
 		$has_parent = false;
-		$parent_slug = $this->prefix;
+		$parent_slug = self::$prefix;
 		$parent_name = apply_filters('halftheory_admin_menu_parent', 'Halftheory');
 		$parent_name = apply_filters('singlepagepermalinks_admin_menu_parent', $parent_name);
 
@@ -130,7 +129,7 @@ class Single_Page_Permalinks {
 				$this->plugin_title,
 				$this->plugin_title,
 				'manage_options',
-				$this->prefix,
+				self::$prefix,
 				__CLASS__ .'::menu_page'
 			);
 			return;
@@ -162,7 +161,7 @@ class Single_Page_Permalinks {
 			$this->plugin_title,
 			$this->plugin_title,
 			'manage_options',
-			$this->prefix,
+			self::$prefix,
 			__CLASS__ .'::menu_page'
 		);
 	}
@@ -188,7 +187,7 @@ class Single_Page_Permalinks {
 				$options_arr = $plugin->get_options_array();
 				$options = array();
 				foreach ($options_arr as $value) {
-					$name = $plugin->prefix.'_'.$value;
+					$name = $plugin::$prefix.'_'.$value;
 					if (!isset($_POST[$name])) {
 						continue;
 					}
@@ -234,14 +233,14 @@ class Single_Page_Permalinks {
 		$options = $plugin->get_option(null, array());
 		$options = array_merge( array_fill_keys($options_arr, null), $options );
 		?>
-	    <form id="<?php echo $plugin->prefix; ?>-admin-form" name="<?php echo $plugin->prefix; ?>-admin-form" method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
+	    <form id="<?php echo $plugin::$prefix; ?>-admin-form" name="<?php echo $plugin::$prefix; ?>-admin-form" method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
 		<?php
 		// Use nonce for verification
 		wp_nonce_field(plugin_basename(__FILE__), $plugin->plugin_name.'::'.__FUNCTION__);
 		?>
 	    <div id="poststuff">
 
-        <p><label for="<?php echo $plugin->prefix; ?>_active"><input type="checkbox" id="<?php echo $plugin->prefix; ?>_active" name="<?php echo $plugin->prefix; ?>_active" value="1"<?php checked($options['active'], 1); ?> /> <?php echo $plugin->plugin_title; ?> active?</label></p>
+        <p><label for="<?php echo $plugin::$prefix; ?>_active"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_active" name="<?php echo $plugin::$prefix; ?>_active" value="1"<?php checked($options['active'], 1); ?> /> <?php echo $plugin->plugin_title; ?> active?</label></p>
 
         <div class="postbox">
         	<div class="inside">
@@ -252,11 +251,11 @@ class Single_Page_Permalinks {
 	            	$options['home_url'] = network_home_url('/');
 	            }
 	            ?>
-	            <p><label for="<?php echo $plugin->prefix; ?>_home_url" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Home URL'); ?></label>
-	            <input type="text" name="<?php echo $plugin->prefix; ?>_home_url" id="<?php echo $plugin->prefix; ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /><br />
+	            <p><label for="<?php echo $plugin::$prefix; ?>_home_url" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Home URL'); ?></label>
+	            <input type="text" name="<?php echo $plugin::$prefix; ?>_home_url" id="<?php echo $plugin::$prefix; ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /><br />
 	        	<span class="description small" style="margin-left: 10em;"><?php _e('The base URL for all Single Page Permalinks. Defaults to network_home_url("/").'); ?></span></p>
 
-		        <p><label for="<?php echo $plugin->prefix; ?>_redirect_urls"><input type="checkbox" id="<?php echo $plugin->prefix; ?>_redirect_urls" name="<?php echo $plugin->prefix; ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], 1); ?> /> Redirect normal permalinks to Single Page Permalinks?</label></p>
+		        <p><label for="<?php echo $plugin::$prefix; ?>_redirect_urls"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_redirect_urls" name="<?php echo $plugin::$prefix; ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], 1); ?> /> Redirect normal permalinks to Single Page Permalinks?</label></p>
 
         	</div>
         </div>
@@ -274,7 +273,7 @@ class Single_Page_Permalinks {
 	            $post_types = apply_filters('singlepagepermalinks_post_types', $post_types);
 	            $options['post_types'] = $plugin->make_array($options['post_types']);
 	            foreach ($post_types as $key => $value) {
-					echo '<label style="display: inline-block; width: 50%;"><input type="checkbox" name="'.$plugin->prefix.'_post_types[]" value="'.$key.'"';
+					echo '<label style="display: inline-block; width: 50%;"><input type="checkbox" name="'.$plugin::$prefix.'_post_types[]" value="'.$key.'"';
 					if (in_array($key, $options['post_types'])) {
 						checked($key, $key);
 					}
@@ -296,8 +295,8 @@ class Single_Page_Permalinks {
 					'slideInFromLeft',
 				);
 				?>
-	            <p><label for="<?php echo $plugin->prefix; ?>_behavior_open" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Open Post'); ?></label>
-				<select id="<?php echo $plugin->prefix; ?>_behavior_open" name="<?php echo $plugin->prefix; ?>_behavior_open">
+	            <p><label for="<?php echo $plugin::$prefix; ?>_behavior_open" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Open Post'); ?></label>
+				<select id="<?php echo $plugin::$prefix; ?>_behavior_open" name="<?php echo $plugin::$prefix; ?>_behavior_open">
 					<option value=""><?php _e('&mdash;&mdash;'); ?></option>
 					<?php foreach ($animation_open as $value) : ?>
 						<option value="<?php echo esc_attr($value); ?>"<?php selected($value, $options['behavior_open']); ?>><?php echo esc_html($value); ?></option>
@@ -312,15 +311,15 @@ class Single_Page_Permalinks {
 					'slideOutToLeft',
 				);
 				?>
-	            <p><label for="<?php echo $plugin->prefix; ?>_behavior_close" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Close Post'); ?></label>
-				<select id="<?php echo $plugin->prefix; ?>_behavior_close" name="<?php echo $plugin->prefix; ?>_behavior_close">
+	            <p><label for="<?php echo $plugin::$prefix; ?>_behavior_close" style="display: inline-block; width: 10em; max-width: 25%;"><?php _e('Close Post'); ?></label>
+				<select id="<?php echo $plugin::$prefix; ?>_behavior_close" name="<?php echo $plugin::$prefix; ?>_behavior_close">
 					<option value=""><?php _e('&mdash;&mdash;'); ?></option>
 					<?php foreach ($animation_close as $value) : ?>
 						<option value="<?php echo esc_attr($value); ?>"<?php selected($value, $options['behavior_close']); ?>><?php echo esc_html($value); ?></option>
 					<?php endforeach; ?>
 				</select></p>
 
-		        <p><label for="<?php echo $plugin->prefix; ?>_behavior_escape"><input type="checkbox" id="<?php echo $plugin->prefix; ?>_behavior_escape" name="<?php echo $plugin->prefix; ?>_behavior_escape" value="1"<?php checked($options['behavior_escape'], 1); ?> /> Escape key closes currently displayed post?</label></p>
+		        <p><label for="<?php echo $plugin::$prefix; ?>_behavior_escape"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_behavior_escape" name="<?php echo $plugin::$prefix; ?>_behavior_escape" value="1"<?php checked($options['behavior_escape'], 1); ?> /> Escape key closes currently displayed post?</label></p>
 
 			</div>
 		</div>
@@ -363,17 +362,17 @@ class Single_Page_Permalinks {
 		if (!$this->enqueue_scripts) {
 			return;
 		}
-		wp_enqueue_script($this->prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), null, true);
+		wp_enqueue_script(self::$prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), null, true);
 		$data = array(
 			'ajaxurl' => esc_url(admin_url().'admin-ajax.php'),
-		    'prefix' => $this->prefix,
+		    'prefix' => self::$prefix,
 		    'home_url' => $this->get_home_url(),
 		    'behavior_open' => $this->get_option('behavior_open', 'slideInFromBottom'),
 		    'behavior_close' => $this->get_option('behavior_close', 'slideOutToBottom'),
 		    'behavior_escape' => $this->get_option('behavior_escape', false),
 		);
-		wp_localize_script($this->prefix.'-init', $this->prefix, $data);
-		wp_enqueue_style($this->prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), null);
+		wp_localize_script(self::$prefix.'-init', self::$prefix, $data);
+		wp_enqueue_style(self::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), null);
 	}
 
 	public function the_content($str = '') {
@@ -459,8 +458,8 @@ class Single_Page_Permalinks {
 		}
 		query_posts($args);
 		$templates = array(
-			$this->prefix.'-'.$posts[0]->post_type.'.php',
-			$this->prefix.'.php',
+			self::$prefix.'-'.$posts[0]->post_type.'.php',
+			self::$prefix.'.php',
 			'partials/'.$posts[0]->post_type.'.php',
 			$posts[0]->post_type.'.php',
 			'index.php',
@@ -485,10 +484,10 @@ class Single_Page_Permalinks {
 	private function get_option($key = '', $default = array()) {
 		if (!isset($this->option)) {
 			if (is_multisite()) {
-				$option = get_site_option($this->prefix, array());
+				$option = get_site_option(self::$prefix, array());
 			}
 			else {
-				$option = get_option($this->prefix, array());
+				$option = get_option(self::$prefix, array());
 			}
 			$this->option = $option;
 		}
@@ -502,10 +501,10 @@ class Single_Page_Permalinks {
 	}
 	private function update_option($option) {
 		if (is_multisite()) {
-			$bool = update_site_option($this->prefix, $option);
+			$bool = update_site_option(self::$prefix, $option);
 		}
 		else {
-			$bool = update_option($this->prefix, $option);
+			$bool = update_option(self::$prefix, $option);
 		}
 		if ($bool !== false) {
 			$this->option = $option;
@@ -514,10 +513,10 @@ class Single_Page_Permalinks {
 	}
 	private function delete_option() {
 		if (is_multisite()) {
-			$bool = delete_site_option($this->prefix);
+			$bool = delete_site_option(self::$prefix);
 		}
 		else {
-			$bool = delete_option($this->prefix);
+			$bool = delete_option(self::$prefix);
 		}
 		if ($bool !== false && isset($this->option)) {
 			unset($this->option);

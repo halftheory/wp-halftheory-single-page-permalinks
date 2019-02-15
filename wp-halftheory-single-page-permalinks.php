@@ -40,7 +40,7 @@ class Single_Page_Permalinks_Plugin {
 	public static function deactivation() {
 		$plugin = new self;
 
-		apply_filters('singlepagepermalinks_deactivation', $plugin->subclass->prefix);
+		apply_filters('singlepagepermalinks_deactivation', $plugin->subclass::$prefix);
 		return;
 	}
 
@@ -49,24 +49,24 @@ class Single_Page_Permalinks_Plugin {
 
 		// remove options
 		global $wpdb;
-		$query_options = "DELETE FROM $wpdb->options WHERE option_name LIKE '".$plugin->subclass->prefix."_%'";
+		$query_options = "DELETE FROM $wpdb->options WHERE option_name LIKE '".$plugin->subclass::$prefix."_%'";
 		if (is_multisite()) {
-			delete_site_option($plugin->subclass->prefix);
-			$wpdb->query("DELETE FROM $wpdb->sitemeta WHERE meta_key LIKE '".$plugin->subclass->prefix."_%'");
+			delete_site_option($plugin->subclass::$prefix);
+			$wpdb->query("DELETE FROM $wpdb->sitemeta WHERE meta_key LIKE '".$plugin->subclass::$prefix."_%'");
 			$current_blog_id = get_current_blog_id();
 			$sites = get_sites();
 			foreach ($sites as $key => $value) {
 				switch_to_blog($value->blog_id);
-				delete_option($plugin->subclass->prefix);
+				delete_option($plugin->subclass::$prefix);
 				$wpdb->query($query_options);
 			}
 			switch_to_blog($current_blog_id);
 		}
 		else {
-			delete_option($plugin->subclass->prefix);
+			delete_option($plugin->subclass::$prefix);
 			$wpdb->query($query_options);
 		}
-		apply_filters('singlepagepermalinks_uninstall', $plugin->subclass->prefix);
+		apply_filters('singlepagepermalinks_uninstall', $plugin->subclass::$prefix);
 		return;
 	}
 
