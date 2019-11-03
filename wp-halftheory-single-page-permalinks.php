@@ -1,30 +1,32 @@
 <?php
 /*
-Plugin Name: Single Page Permalinks
+Plugin Name: Half/theory Single Page Permalinks
 Plugin URI: https://github.com/halftheory/wp-halftheory-single-page-permalinks
 GitHub Plugin URI: https://github.com/halftheory/wp-halftheory-single-page-permalinks
 Description: Single Page Permalinks
 Author: Half/theory
 Author URI: https://github.com/halftheory
-Version: 1.0
-Network: true
+Version: 2.0
+Network: false
 */
 
 /*
 Available filters:
-singlepagepermalinks_deactivation(string $db_prefix)
-singlepagepermalinks_uninstall(string $db_prefix)
+singlepagepermalinks_deactivation(string $db_prefix, class $subclass)
+singlepagepermalinks_uninstall(string $db_prefix, class $subclass)
 */
 
 // Exit if accessed directly.
 defined('ABSPATH') || exit;
 
 if (!class_exists('Single_Page_Permalinks_Plugin')) :
-class Single_Page_Permalinks_Plugin {
+final class Single_Page_Permalinks_Plugin {
 
 	public function __construct() {
 		@include_once(dirname(__FILE__).'/class-single-page-permalinks.php');
-		$this->subclass = new Single_Page_Permalinks();
+		if (class_exists('Single_Page_Permalinks')) {
+			$this->subclass = new Single_Page_Permalinks(plugin_basename(__FILE__));
+		}
 	}
 
 	public static function init() {
@@ -39,34 +41,18 @@ class Single_Page_Permalinks_Plugin {
 
 	public static function deactivation() {
 		$plugin = new self;
-
-		apply_filters('singlepagepermalinks_deactivation', $plugin->subclass::$prefix);
+		if ($plugin->subclass) {
+			apply_filters('singlepagepermalinks_deactivation', $plugin->subclass::$prefix, $plugin->subclass);
+		}
 		return;
 	}
 
 	public static function uninstall() {
 		$plugin = new self;
-
-		// remove options
-		global $wpdb;
-		$query_options = "DELETE FROM $wpdb->options WHERE option_name LIKE '".$plugin->subclass::$prefix."_%'";
-		if (is_multisite()) {
-			delete_site_option($plugin->subclass::$prefix);
-			$wpdb->query("DELETE FROM $wpdb->sitemeta WHERE meta_key LIKE '".$plugin->subclass::$prefix."_%'");
-			$current_blog_id = get_current_blog_id();
-			$sites = get_sites();
-			foreach ($sites as $key => $value) {
-				switch_to_blog($value->blog_id);
-				delete_option($plugin->subclass::$prefix);
-				$wpdb->query($query_options);
-			}
-			switch_to_blog($current_blog_id);
+		if ($plugin->subclass) {
+			$plugin->subclass->delete_option_uninstall();
+			apply_filters('singlepagepermalinks_uninstall', $plugin->subclass::$prefix, $plugin->subclass);
 		}
-		else {
-			delete_option($plugin->subclass::$prefix);
-			$wpdb->query($query_options);
-		}
-		apply_filters('singlepagepermalinks_uninstall', $plugin->subclass::$prefix);
 		return;
 	}
 

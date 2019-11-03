@@ -1,42 +1,34 @@
 <?php
 /*
 Available filters:
-halftheory_admin_menu_parent
-singlepagepermalinks_admin_menu_parent
 singlepagepermalinks_post_types
 singlepagepermalinks_the_content
+singlepagepermalinks_template_names
 */
 
 // Exit if accessed directly.
 defined('ABSPATH') || exit;
 
-if (!class_exists('Single_Page_Permalinks')) :
-class Single_Page_Permalinks {
+if (!class_exists('Halftheory_Helper_Plugin')) {
+	@include_once(dirname(__FILE__).'/class-halftheory-helper-plugin.php');
+}
 
-	public static $prefix;
+if (!class_exists('Single_Page_Permalinks') && class_exists('Halftheory_Helper_Plugin')) :
+final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
+
 	public static $active;
 
-	public function __construct() {
-		$this->plugin_name = get_called_class();
-		$this->plugin_title = ucwords(str_replace('_', ' ', $this->plugin_name));
-		self::$prefix = sanitize_key($this->plugin_name);
-		self::$prefix = preg_replace("/[^a-z0-9]/", "", self::$prefix);
+	/* setup */
 
-		// admin options
-		if (!$this->is_front_end()) {
-			if (is_multisite()) {
-				add_action('network_admin_menu', array($this,'admin_menu'));
-				if (is_main_site()) {
-					add_action('admin_menu', array($this,'admin_menu'));
-				}
-			}
-			else {
-				add_action('admin_menu', array($this,'admin_menu'));
-			}
-		}
+	public function init($plugin_basename = '', $prefix = '') {
+		parent::init($plugin_basename, $prefix);
+		self::$active = $this->get_option(self::$prefix, 'active', false);
+	}
+
+	protected function setup_actions() {
+		parent::setup_actions();
 
 		// stop if not active
-		self::$active = $this->get_option('active', false);
 		if (empty(self::$active)) {
 			return;
 		}
@@ -44,7 +36,7 @@ class Single_Page_Permalinks {
 		// admin
 		add_action('edit_form_after_title', array($this,'edit_form_after_title'), 10);
 
-		// filters
+		// actions
 		if ($this->is_front_end()) {
 			$this->enqueue_scripts = false;
 			add_action('template_redirect', array($this,'template_redirect'), 20);
@@ -59,112 +51,7 @@ class Single_Page_Permalinks {
 		}
 	}
 
-	/* functions-common */
-
-	private function make_array($str = '', $sep = ',') {
-		if (function_exists(__FUNCTION__)) {
-			$func = __FUNCTION__;
-			return $func($str, $sep);
-		}
-		if (is_array($str)) {
-			return $str;
-		}
-		if (empty($str)) {
-			return array();
-		}
-		$arr = explode($sep, $str);
-		$arr = array_map('trim', $arr);
-		$arr = array_filter($arr);
-		return $arr;
-	}
-
-	private function is_front_end() {
-		if (function_exists(__FUNCTION__)) {
-			$func = __FUNCTION__;
-			return $func();
-		}
-		if (is_admin() && !wp_doing_ajax()) {
-			return false;
-		}
-		if (wp_doing_ajax()) {
-			if (!empty($_SERVER["HTTP_REFERER"])) {
-				$url_test = $_SERVER["HTTP_REFERER"];
-			}
-			else {
-				$url_test = $this->get_current_uri();
-			}
-			if (strpos($url_test, admin_url()) !== false) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private function get_current_uri() {
-		if (function_exists(__FUNCTION__)) {
-			$func = __FUNCTION__;
-			return $func();
-		}
-	 	$res  = is_ssl() ? 'https://' : 'http://';
-	 	$res .= $_SERVER['HTTP_HOST'];
-	 	$res .= $_SERVER['REQUEST_URI'];
-		return $res;
-	}
-
 	/* admin */
-
-	public function admin_menu() {
-		if (!is_array($GLOBALS['menu'])) {
-			return;
-		}
-
-		$has_parent = false;
-		$parent_slug = self::$prefix;
-		$parent_name = apply_filters('halftheory_admin_menu_parent', 'Halftheory');
-		$parent_name = apply_filters('singlepagepermalinks_admin_menu_parent', $parent_name);
-
-		// set parent to nothing to skip parent menu creation
-		if (empty($parent_name)) {
-			add_options_page(
-				$this->plugin_title,
-				$this->plugin_title,
-				'manage_options',
-				self::$prefix,
-				__CLASS__ .'::menu_page'
-			);
-			return;
-		}
-
-		// find top level menu if it exists
-	    foreach ($GLOBALS['menu'] as $value) {
-	    	if ($value[0] == $parent_name) {
-	    		$parent_slug = $value[2];
-	    		$has_parent = true;
-	    		break;
-	    	}
-	    }
-
-		// add top level menu if it doesn't exist
-		if (!$has_parent) {
-			add_menu_page(
-				$this->plugin_title,
-				$parent_name,
-				'manage_options',
-				$parent_slug,
-				__CLASS__ .'::menu_page'
-			);
-		}
-
-		// add the menu
-		add_submenu_page(
-			$parent_slug,
-			$this->plugin_title,
-			$this->plugin_title,
-			'manage_options',
-			self::$prefix,
-			__CLASS__ .'::menu_page'
-		);
-	}
 
 	public function menu_page() {
  		global $title;
@@ -172,9 +59,9 @@ class Single_Page_Permalinks {
 		<div class="wrap">
 			<h2><?php echo $title; ?></h2>
 		<?php
- 		$plugin = new Single_Page_Permalinks();
+ 		$plugin = new self(self::$plugin_basename, self::$prefix, false);
 
-        if ($_POST['save']) {
+        if (isset($_POST['save']) && !empty($_POST['save'])) {
         	$save = function() use ($plugin) {
 				// verify this came from the our screen and with proper authorization
 				if (!isset($_POST[$plugin->plugin_name.'::menu_page'])) {
@@ -200,12 +87,12 @@ class Single_Page_Permalinks {
 	            $updated = '<div class="updated"><p><strong>Options saved.</strong></p></div>';
 	            $error = '<div class="error"><p><strong>Error: There was a problem.</strong></p></div>';
 				if (!empty($options)) {
-		            if ($plugin->update_option($options)) {
+		            if ($plugin->update_option($plugin::$prefix, $options)) {
 		            	echo $updated;
 		            }
 		        	else {
 		        		// where there changes?
-		        		$options_old = $plugin->get_option(null, array());
+		        		$options_old = $plugin->get_option($plugin::$prefix, null, array());
 		        		ksort($options_old);
 		        		ksort($options);
 		        		if ($options_old !== $options) {
@@ -217,7 +104,7 @@ class Single_Page_Permalinks {
 		        	}
 				}
 				else {
-		            if ($plugin->delete_option()) {
+		            if ($plugin->delete_option($plugin::$prefix)) {
 		            	echo $updated;
 		            }
 		        	else {
@@ -230,7 +117,7 @@ class Single_Page_Permalinks {
 
 		// show the form
 		$options_arr = $plugin->get_options_array();
-		$options = $plugin->get_option(null, array());
+		$options = $plugin->get_option($plugin::$prefix, null, array());
 		$options = array_merge( array_fill_keys($options_arr, null), $options );
 		?>
 	    <form id="<?php echo $plugin::$prefix; ?>-admin-form" name="<?php echo $plugin::$prefix; ?>-admin-form" method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
@@ -240,7 +127,7 @@ class Single_Page_Permalinks {
 		?>
 	    <div id="poststuff">
 
-        <p><label for="<?php echo $plugin::$prefix; ?>_active"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_active" name="<?php echo $plugin::$prefix; ?>_active" value="1"<?php checked($options['active'], 1); ?> /> <?php echo $plugin->plugin_title; ?> active?</label></p>
+        <p><label for="<?php echo $plugin::$prefix; ?>_active"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_active" name="<?php echo $plugin::$prefix; ?>_active" value="1"<?php checked($options['active'], 1); ?> /> <?php echo $plugin->plugin_title; ?> <?php _e('active?'); ?></label></p>
 
         <div class="postbox">
         	<div class="inside">
@@ -255,7 +142,7 @@ class Single_Page_Permalinks {
 	            <input type="text" name="<?php echo $plugin::$prefix; ?>_home_url" id="<?php echo $plugin::$prefix; ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /><br />
 	        	<span class="description small" style="margin-left: 10em;"><?php _e('The base URL for all Single Page Permalinks. Defaults to network_home_url("/").'); ?></span></p>
 
-		        <p><label for="<?php echo $plugin::$prefix; ?>_redirect_urls"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_redirect_urls" name="<?php echo $plugin::$prefix; ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], 1); ?> /> Redirect normal permalinks to Single Page Permalinks?</label></p>
+		        <p><label for="<?php echo $plugin::$prefix; ?>_redirect_urls"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_redirect_urls" name="<?php echo $plugin::$prefix; ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], 1); ?> /> <?php _e('Redirect normal permalinks to Single Page Permalinks?'); ?></label></p>
 
         	</div>
         </div>
@@ -319,14 +206,12 @@ class Single_Page_Permalinks {
 					<?php endforeach; ?>
 				</select></p>
 
-		        <p><label for="<?php echo $plugin::$prefix; ?>_behavior_escape"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_behavior_escape" name="<?php echo $plugin::$prefix; ?>_behavior_escape" value="1"<?php checked($options['behavior_escape'], 1); ?> /> Escape key closes currently displayed post?</label></p>
+		        <p><label for="<?php echo $plugin::$prefix; ?>_behavior_escape"><input type="checkbox" id="<?php echo $plugin::$prefix; ?>_behavior_escape" name="<?php echo $plugin::$prefix; ?>_behavior_escape" value="1"<?php checked($options['behavior_escape'], 1); ?> /> <?php _e('Escape key closes currently displayed post?'); ?></label></p>
 
 			</div>
 		</div>
 
-        <p class="submit">
-            <input type="submit" value="<?php _e('Update'); ?>" id="publish" class="button button-primary button-large" name="save">
-        </p>
+        <?php submit_button(__('Update'), array('primary','large'), 'save'); ?>
 
         </div><!-- poststuff -->
     	</form>
@@ -337,17 +222,17 @@ class Single_Page_Permalinks {
 
  	public function edit_form_after_title($post) {
 		if ($url = $this->singlepagepermalink($post)) {
-	 		?><div class="inside" style="padding: 0 10px; color: #666;"><strong>Single Page Permalink:</strong> <a href="<?php echo esc_url($url); ?>" target="_blank"><?php echo $url; ?></a></div><?php
+	 		?><div class="inside" style="padding: 0 10px; color: #666;"><strong><?php _e('Single Page Permalink:'); ?></strong> <a href="<?php echo esc_url($url); ?>" target="_blank"><?php echo $url; ?></a></div><?php
 		}
  	}
 
-	/* actions + filters */
+	/* actions */
 
 	public function template_redirect() {
 		// redirect urls - can't get location.hash here - check in js
 		if ($url = $this->singlepagepermalink()) {
 			$current_url = trailingslashit(remove_query_arg(array_keys($_GET), $this->get_current_uri()));
-			$redirect_urls = $this->get_option('redirect_urls', false);
+			$redirect_urls = $this->get_option(self::$prefix, 'redirect_urls', false);
 			if ($current_url == $this->get_home_url()) {
 				$this->enqueue_scripts = true;
 			}
@@ -367,9 +252,9 @@ class Single_Page_Permalinks {
 			'ajaxurl' => esc_url(admin_url().'admin-ajax.php'),
 		    'prefix' => self::$prefix,
 		    'home_url' => $this->get_home_url(),
-		    'behavior_open' => $this->get_option('behavior_open', 'slideInFromBottom'),
-		    'behavior_close' => $this->get_option('behavior_close', 'slideOutToBottom'),
-		    'behavior_escape' => $this->get_option('behavior_escape', false),
+		    'behavior_open' => $this->get_option(self::$prefix, 'behavior_open', 'slideInFromBottom'),
+		    'behavior_close' => $this->get_option(self::$prefix, 'behavior_close', 'slideOutToBottom'),
+		    'behavior_escape' => $this->get_option(self::$prefix, 'behavior_escape', false),
 		);
 		wp_localize_script(self::$prefix.'-init', self::$prefix, $data);
 		wp_enqueue_style(self::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), null);
@@ -413,7 +298,7 @@ class Single_Page_Permalinks {
 	public function post_link($permalink, $post_or_ID = 0, $leavename_or_sample = false) {
 		if (current_filter() == 'page_link') {
 			$post = get_post($post_or_ID);
-			if (is_wp_error($post)) {
+			if (empty($post) || is_wp_error($post)) {
 				return $permalink;
 			}
 		}
@@ -437,7 +322,7 @@ class Single_Page_Permalinks {
 			'nopaging' => true,
 			'ignore_sticky_posts' => true,
 			'post_status' => 'publish,inherit',
-			'post_type' => $this->get_option('post_types', array()),
+			'post_type' => $this->get_option(self::$prefix, 'post_types', array()),
 			'orderby' => 'title',
 			'order' => 'ASC',
 			'suppress_filters' => false,
@@ -452,20 +337,21 @@ class Single_Page_Permalinks {
 			exit;
 		}
 		// posts
-		$posts = get_posts($args);
+		$posts = query_posts($args);
 		if (empty($posts)) {
+			wp_reset_query();
 			exit;
 		}
-		query_posts($args);
-		$templates = array(
+		$template_names = array(
 			self::$prefix.'-'.$posts[0]->post_type.'.php',
 			self::$prefix.'.php',
 			'partials/'.$posts[0]->post_type.'.php',
 			$posts[0]->post_type.'.php',
 			'index.php',
 		);
+		$template_names = apply_filters('singlepagepermalinks_template_names', $template_names, $posts, $args);
 		ob_start();
-		locate_template($templates, true, false);
+		locate_template($template_names, true);
 		$str = ob_get_clean();
 		wp_reset_query();
 		$str = trim($str);
@@ -481,49 +367,6 @@ class Single_Page_Permalinks {
 
     /* functions */
 
-	private function get_option($key = '', $default = array()) {
-		if (!isset($this->option)) {
-			if (is_multisite()) {
-				$option = get_site_option(self::$prefix, array());
-			}
-			else {
-				$option = get_option(self::$prefix, array());
-			}
-			$this->option = $option;
-		}
-		if (!empty($key)) {
-			if (array_key_exists($key, $this->option)) {
-				return $this->option[$key];
-			}
-			return $default;
-		}
-		return $this->option;
-	}
-	private function update_option($option) {
-		if (is_multisite()) {
-			$bool = update_site_option(self::$prefix, $option);
-		}
-		else {
-			$bool = update_option(self::$prefix, $option);
-		}
-		if ($bool !== false) {
-			$this->option = $option;
-		}
-		return $bool;
-	}
-	private function delete_option() {
-		if (is_multisite()) {
-			$bool = delete_site_option(self::$prefix);
-		}
-		else {
-			$bool = delete_option(self::$prefix);
-		}
-		if ($bool !== false && isset($this->option)) {
-			unset($this->option);
-		}
-		return $bool;
-	}
-
     private function get_options_array() {
 		return array(
 			'active',
@@ -537,7 +380,7 @@ class Single_Page_Permalinks {
     }
 
     private function get_home_url() {
-		return trailingslashit(set_url_scheme($this->get_option('home_url', network_home_url('/'))));
+		return trailingslashit(set_url_scheme($this->get_option(self::$prefix, 'home_url', network_home_url('/'))));
     }
 
 	private function get_post_ID_post() {
@@ -571,7 +414,7 @@ class Single_Page_Permalinks {
 				return false;
 			}
 		}
-		$post_types = $this->get_option('post_types', array());
+		$post_types = $this->get_option(self::$prefix, 'post_types', array());
 		if (!in_array($post->post_type, $post_types)) {
 			return false;
 		}
