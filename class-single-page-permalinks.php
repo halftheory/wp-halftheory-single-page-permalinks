@@ -61,15 +61,8 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		<?php
  		$plugin = new self(self::$plugin_basename, self::$prefix, false);
 
-        if (isset($_POST['save']) && !empty($_POST['save'])) {
+		if ($plugin->save_menu_page()) {
         	$save = function() use ($plugin) {
-				// verify this came from the our screen and with proper authorization
-				if (!isset($_POST[$plugin->plugin_name.'::menu_page'])) {
-					return;
-				}
-				if (!wp_verify_nonce($_POST[$plugin->plugin_name.'::menu_page'], plugin_basename(__FILE__))) {
-					return;
-				}
 				// get values
 				$options_arr = $plugin->get_options_array();
 				$options = array();
@@ -123,7 +116,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 	    <form id="<?php echo $plugin::$prefix; ?>-admin-form" name="<?php echo $plugin::$prefix; ?>-admin-form" method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
 		<?php
 		// Use nonce for verification
-		wp_nonce_field(plugin_basename(__FILE__), $plugin->plugin_name.'::'.__FUNCTION__);
+		wp_nonce_field(self::$plugin_basename, $plugin->plugin_name.'::'.__FUNCTION__);
 		?>
 	    <div id="poststuff">
 
