@@ -25,7 +25,7 @@ final class Single_Page_Permalinks_Plugin {
 	public function __construct() {
 		@include_once(dirname(__FILE__).'/class-single-page-permalinks.php');
 		if (class_exists('Single_Page_Permalinks')) {
-			$this->subclass = new Single_Page_Permalinks(plugin_basename(__FILE__));
+			$this->subclass = new Single_Page_Permalinks(plugin_basename(__FILE__), '', true);
 		}
 	}
 

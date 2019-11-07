@@ -18,7 +18,6 @@ The following filters are available for plugin/theme customization:
 - singlepagepermalinks_admin_menu_parent
 - singlepagepermalinks_deactivation
 - singlepagepermalinks_uninstall
-- singlepagepermalinks_post_types
 - singlepagepermalinks_the_content
 - singlepagepermalinks_template_names
 

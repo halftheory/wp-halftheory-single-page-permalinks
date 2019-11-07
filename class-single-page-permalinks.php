@@ -1,7 +1,6 @@
 <?php
 /*
 Available filters:
-singlepagepermalinks_post_types
 singlepagepermalinks_the_content
 singlepagepermalinks_template_names
 */
@@ -16,13 +15,15 @@ if (!class_exists('Halftheory_Helper_Plugin')) {
 if (!class_exists('Single_Page_Permalinks') && class_exists('Halftheory_Helper_Plugin')) :
 final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 
-	public static $active;
+	public static $plugin_basename;
+	public static $prefix;
+	public static $active = false;
 
 	/* setup */
 
 	public function init($plugin_basename = '', $prefix = '') {
 		parent::init($plugin_basename, $prefix);
-		self::$active = $this->get_option(self::$prefix, 'active', false);
+		self::$active = $this->get_option(static::$prefix, 'active', false);
 	}
 
 	protected function setup_actions() {
@@ -46,8 +47,8 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 			add_filter('page_link', array($this,'post_link'), 20, 3);
 			add_filter('post_type_link', array($this,'post_link'), 20, 3);
 			// ajax
-        	add_action('wp_ajax_'.self::$prefix.'_get_post', array($this, 'ajax_get_post'));
-        	add_action('wp_ajax_nopriv_'.self::$prefix.'_get_post', array($this, 'ajax_get_post'));
+        	add_action('wp_ajax_'.static::$prefix.'_get_post', array($this, 'ajax_get_post'));
+        	add_action('wp_ajax_nopriv_'.static::$prefix.'_get_post', array($this, 'ajax_get_post'));
 		}
 	}
 
@@ -59,7 +60,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		<div class="wrap">
 			<h2><?php echo $title; ?></h2>
 		<?php
- 		$plugin = new self(self::$plugin_basename, self::$prefix, false);
+ 		$plugin = new static(static::$plugin_basename, static::$prefix, false);
 
 		if ($plugin->save_menu_page()) {
         	$save = function() use ($plugin) {
@@ -116,7 +117,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 	    <form id="<?php echo $plugin::$prefix; ?>-admin-form" name="<?php echo $plugin::$prefix; ?>-admin-form" method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
 		<?php
 		// Use nonce for verification
-		wp_nonce_field(self::$plugin_basename, $plugin->plugin_name.'::'.__FUNCTION__);
+		wp_nonce_field($plugin::$plugin_basename, $plugin->plugin_name.'::'.__FUNCTION__);
 		?>
 	    <div id="poststuff">
 
@@ -150,7 +151,6 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 	            foreach ($arr as $key => $value) {
 	            	$post_types[$key] = $value->label;
 	            }
-	            $post_types = apply_filters('singlepagepermalinks_post_types', $post_types);
 	            $options['post_types'] = $plugin->make_array($options['post_types']);
 	            foreach ($post_types as $key => $value) {
 					echo '<label style="display: inline-block; width: 50%;"><input type="checkbox" name="'.$plugin::$prefix.'_post_types[]" value="'.$key.'"';
@@ -225,7 +225,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		// redirect urls - can't get location.hash here - check in js
 		if ($url = $this->singlepagepermalink()) {
 			$current_url = trailingslashit(remove_query_arg(array_keys($_GET), $this->get_current_uri()));
-			$redirect_urls = $this->get_option(self::$prefix, 'redirect_urls', false);
+			$redirect_urls = $this->get_option(static::$prefix, 'redirect_urls', false);
 			if ($current_url == $this->get_home_url()) {
 				$this->enqueue_scripts = true;
 			}
@@ -240,21 +240,27 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		if (!$this->enqueue_scripts) {
 			return;
 		}
-		wp_enqueue_script(self::$prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), null, true);
+		wp_enqueue_script(static::$prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), null, true);
 		$data = array(
 			'ajaxurl' => esc_url(admin_url().'admin-ajax.php'),
-		    'prefix' => self::$prefix,
+		    'prefix' => static::$prefix,
 		    'home_url' => $this->get_home_url(),
-		    'behavior_open' => $this->get_option(self::$prefix, 'behavior_open', 'slideInFromBottom'),
-		    'behavior_close' => $this->get_option(self::$prefix, 'behavior_close', 'slideOutToBottom'),
-		    'behavior_escape' => $this->get_option(self::$prefix, 'behavior_escape', false),
+		    'behavior_open' => $this->get_option(static::$prefix, 'behavior_open', 'slideInFromBottom'),
+		    'behavior_close' => $this->get_option(static::$prefix, 'behavior_close', 'slideOutToBottom'),
+		    'behavior_escape' => $this->get_option(static::$prefix, 'behavior_escape', false),
 		);
-		wp_localize_script(self::$prefix.'-init', self::$prefix, $data);
-		wp_enqueue_style(self::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), null);
+		wp_localize_script(static::$prefix.'-init', static::$prefix, $data);
+		wp_enqueue_style(static::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), null);
 	}
 
 	public function the_content($str = '') {
 		if (current_filter() == 'the_content' && empty($str)) {
+			return $str;
+		}
+		if (current_filter() == 'the_content' && !in_the_loop()) {
+			return $str;
+		}
+		if (!is_main_query()) {
 			return $str;
 		}
 		if (!is_singular()) {
@@ -267,12 +273,6 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 			return $str;
 		}
 		if (is_home()) {
-			return $str;
-		}
-		if (!is_main_query()) {
-			return $str;
-		}
-		if (current_filter() == 'the_content' && !in_the_loop()) {
 			return $str;
 		}
 
@@ -315,7 +315,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 			'nopaging' => true,
 			'ignore_sticky_posts' => true,
 			'post_status' => 'publish,inherit',
-			'post_type' => $this->get_option(self::$prefix, 'post_types', array()),
+			'post_type' => $this->get_option(static::$prefix, 'post_types', array()),
 			'orderby' => 'title',
 			'order' => 'ASC',
 			'suppress_filters' => false,
@@ -336,8 +336,8 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 			exit;
 		}
 		$template_names = array(
-			self::$prefix.'-'.$posts[0]->post_type.'.php',
-			self::$prefix.'.php',
+			static::$prefix.'-'.$posts[0]->post_type.'.php',
+			static::$prefix.'.php',
 			'partials/'.$posts[0]->post_type.'.php',
 			$posts[0]->post_type.'.php',
 			'index.php',
@@ -373,7 +373,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
     }
 
     private function get_home_url() {
-		return trailingslashit(set_url_scheme($this->get_option(self::$prefix, 'home_url', network_home_url('/'))));
+		return trailingslashit(set_url_scheme($this->get_option(static::$prefix, 'home_url', network_home_url('/'))));
     }
 
 	private function get_post_ID_post() {
@@ -407,7 +407,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 				return false;
 			}
 		}
-		$post_types = $this->get_option(self::$prefix, 'post_types', array());
+		$post_types = $this->get_option(static::$prefix, 'post_types', array());
 		if (!in_array($post->post_type, $post_types)) {
 			return false;
 		}
