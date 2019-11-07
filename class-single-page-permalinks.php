@@ -71,7 +71,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 					if (!isset($_POST[$name])) {
 						continue;
 					}
-					if (empty($_POST[$name])) {
+					if ($this->empty_notzero($_POST[$name])) {
 						continue;
 					}
 					$options[$value] = $_POST[$name];
