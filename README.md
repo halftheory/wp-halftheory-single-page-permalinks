@@ -19,7 +19,7 @@ The following filters are available for plugin/theme customization:
 - singlepagepermalinks_deactivation
 - singlepagepermalinks_uninstall
 - singlepagepermalinks_the_content
-- singlepagepermalinks_template_names
+- singlepagepermalinks_template
 
 <!---
 TODO:

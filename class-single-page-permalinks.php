@@ -2,7 +2,7 @@
 /*
 Available filters:
 singlepagepermalinks_the_content
-singlepagepermalinks_template_names
+singlepagepermalinks_template
 */
 
 // Exit if accessed directly.
@@ -230,8 +230,9 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 				$this->enqueue_scripts = true;
 			}
 			elseif (!empty($redirect_urls) && $current_url != $this->get_home_url()) {
-				wp_redirect($url);
-				exit();
+				if (wp_redirect($url)) {
+					exit;
+				}
 			}
 		}
 	}
@@ -308,7 +309,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 
 	public function ajax_get_post() {
 	    if (!isset($_REQUEST['post_name'])) {
-	    	exit;
+	    	wp_die();
 	    }
 		$args = array(
 			'no_found_rows' => true,
@@ -327,33 +328,32 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 			$args['name'] = $_REQUEST['post_name'];
 		}
 		else {
-			exit;
+			wp_die();
 		}
 		// posts
 		$posts = query_posts($args);
 		if (empty($posts)) {
 			wp_reset_query();
-			exit;
+			wp_die();
 		}
-		$template_names = array(
-			static::$prefix.'-'.$posts[0]->post_type.'.php',
-			static::$prefix.'.php',
-			'partials/'.$posts[0]->post_type.'.php',
-			$posts[0]->post_type.'.php',
-			'index.php',
-		);
-		$template_names = apply_filters('singlepagepermalinks_template_names', $template_names, $posts, $args);
+		$str = '';
 		ob_start();
-		locate_template($template_names, true);
+		while (have_posts()) { // Start the loop.
+			the_post();
+			global $post;
+			if ($template = self::get_template()) {
+				$template = apply_filters('singlepagepermalinks_template', $template, $post, $args);
+				load_template($template, false);
+			}
+		} // End the loop.
 		$str = ob_get_clean();
 		wp_reset_query();
-		$str = trim($str);
 		if (empty($str)) {
-			exit;
+			wp_die();
 		}
 		if (strpos(current_action(), 'wp_ajax_') !== false) {
 		    echo $str;
-	        exit;
+	        wp_die();
 		}
 		return $str;
 	}
