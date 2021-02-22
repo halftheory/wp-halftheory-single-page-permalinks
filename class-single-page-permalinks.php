@@ -241,7 +241,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		if (!$this->enqueue_scripts) {
 			return;
 		}
-		wp_enqueue_script(static::$prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), null, true);
+		wp_enqueue_script(static::$prefix.'-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array('jquery'), self::get_plugin_version(), true);
 		$data = array(
 			'ajaxurl' => esc_url(admin_url().'admin-ajax.php'),
 		    'prefix' => static::$prefix,
@@ -251,23 +251,11 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		    'behavior_escape' => $this->get_option(static::$prefix, 'behavior_escape', false),
 		);
 		wp_localize_script(static::$prefix.'-init', static::$prefix, $data);
-		wp_enqueue_style(static::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), null);
+		wp_enqueue_style(static::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), self::get_plugin_version());
 	}
 
 	public function the_content($str = '') {
-		if (current_filter() == 'the_content' && empty($str)) {
-			return $str;
-		}
-		if (current_filter() == 'the_content' && !in_the_loop()) {
-			return $str;
-		}
-		if (!is_main_query()) {
-			return $str;
-		}
-		if (!is_singular()) {
-			return $str;
-		}
-		if (is_404()) {
+		if (!$this->the_content_conditions($str)) {
 			return $str;
 		}
 		if (is_search()) {
@@ -276,16 +264,13 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		if (is_home()) {
 			return $str;
 		}
-
 		// start html
-		$res = $str;
-
-		$res = apply_filters('singlepagepermalinks_the_content', $res, $this);
+		$str = apply_filters('singlepagepermalinks_the_content', $str, $this);
 		if (current_filter() == 'the_content') {
-			return $res;
+			return $str;
 		}
 		else {
-			echo $res;
+			echo $str;
 		}
 	}
 
@@ -341,9 +326,16 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 		while (have_posts()) { // Start the loop.
 			the_post();
 			global $post;
-			if ($template = self::get_template()) {
-				$template = apply_filters('singlepagepermalinks_template', $template, $post, $args);
+			$template = false;
+			$template = apply_filters('singlepagepermalinks_template', $template, $post, $args);
+			if (empty($template)) {
+				$template = self::get_template();
+			}
+			if ($template) {
 				load_template($template, false);
+			}
+			else {
+				load_template(get_stylesheet_directory().'/index.php', false);
 			}
 		} // End the loop.
 		$str = ob_get_clean();
