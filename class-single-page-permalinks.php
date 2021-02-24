@@ -224,7 +224,7 @@ final class Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 	public function template_redirect() {
 		// redirect urls - can't get location.hash here - check in js
 		if ($url = $this->singlepagepermalink()) {
-			$current_url = trailingslashit(remove_query_arg(array_keys($_GET), $this->get_current_uri()));
+			$current_url = $this->get_current_uri();
 			$redirect_urls = $this->get_option(static::$prefix, 'redirect_urls', false);
 			if ($current_url == $this->get_home_url()) {
 				$this->enqueue_scripts = true;
