@@ -323,10 +323,11 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 				if ( empty($template) ) {
 					$template = $this->get_template();
 				}
-				if ( $template ) {
+				if ( empty($template) ) {
+					$template = locate_template(array( 'index.php' ), false);
+				}
+				if ( ! empty($template) && file_exists($template) ) {
 					load_template($template, false);
-				} else {
-					load_template(get_stylesheet_directory() . '/index.php', false);
 				}
 			}
 			// End the loop.
