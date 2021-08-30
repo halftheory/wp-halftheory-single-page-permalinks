@@ -237,7 +237,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 			if ( ! $this->enqueue_scripts ) {
 				return;
 			}
-			wp_enqueue_script(static::$prefix . '-init', plugins_url('/assets/js/single-page-permalinks-init.min.js', __FILE__), array( 'jquery' ), $this->get_plugin_version(), true);
+			wp_enqueue_script(static::$prefix . '-init', plugins_url('/assets/js/single-page-permalinks-init' . ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '.min' : '' ) . '.js', __FILE__), array( 'jquery' ), $this->get_plugin_version(), true);
 			$data = array(
 				'ajaxurl' => esc_url(admin_url() . 'admin-ajax.php'),
 			    'prefix' => static::$prefix,
