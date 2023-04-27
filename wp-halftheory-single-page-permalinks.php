@@ -301,7 +301,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 				'suppress_filters' => false,
 	        );
 			if ( is_numeric($_REQUEST['post_name']) && (int) $_REQUEST['post_name'] === 0 ) {
-				$args['include'] = get_option('page_on_front');
+				$args['include'] = $this->get_option('page_on_front');
 			} elseif ( ! empty($_REQUEST['post_name']) ) {
 				$args['name'] = $_REQUEST['post_name'];
 			} else {
@@ -408,7 +408,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 			}
 			// home.
 			if ( $post->post_type === 'page' ) {
-				if ( 'page' === get_option('show_on_front') && (int) $post->ID === (int) get_option('page_on_front') ) {
+				if ( 'page' === $this->get_option('show_on_front') && (int) $post->ID === (int) $this->get_option('page_on_front') ) {
 					return home_url('/');
 				}
 			}
