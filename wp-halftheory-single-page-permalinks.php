@@ -19,32 +19,33 @@ singlepagepermalinks_template
 // Exit if accessed directly.
 defined('ABSPATH') || exit;
 
-if ( ! class_exists('Halftheory_Helper_Plugin', false) && is_readable(dirname(__FILE__) . '/class-halftheory-helper-plugin.php') ) {
-	include_once dirname(__FILE__) . '/class-halftheory-helper-plugin.php';
+if ( ! class_exists('Halftheory_Helper_Plugin', false) && is_readable(__DIR__ . '/class-halftheory-helper-plugin.php') ) {
+	include_once __DIR__ . '/class-halftheory-helper-plugin.php';
 }
 
 if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists('Halftheory_Helper_Plugin', false) ) :
+	#[AllowDynamicProperties]
 	final class Halftheory_Single_Page_Permalinks extends Halftheory_Helper_Plugin {
 
-        protected static $instance;
-        public static $prefix;
-        public static $active = false;
+		protected static $instance;
+		public static $prefix;
+		public static $active = false;
 
-        protected function setup_globals( $plugin_basename = null, $prefix = null ) {
-            parent::setup_globals($plugin_basename, $prefix);
+		protected function setup_globals( $plugin_basename = null, $prefix = null ) {
+			parent::setup_globals($plugin_basename, $prefix);
 
-            self::$active = $this->get_options_context('db', 'active');
-        }
+			self::$active = $this->get_options_context('db', 'active');
+		}
 
 		protected function setup_actions() {
 			parent::setup_actions();
 
-            // Stop if not active.
-            if ( empty(self::$active) ) {
-                return;
-            }
+			// Stop if not active.
+			if ( empty(self::$active) ) {
+				return;
+			}
 
-			if ( ! $this->is_front_end() ) {
+			if ( ! $this->is_public() ) {
 				// admin.
 				add_action('edit_form_after_title', array( $this, 'edit_form_after_title' ), 10);
 			} else {
@@ -57,32 +58,32 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 				add_filter('page_link', array( $this, 'post_link' ), 20, 3);
 				add_filter('post_type_link', array( $this, 'post_link' ), 20, 3);
 				// ajax
-	        	add_action('wp_ajax_' . static::$prefix . '_get_post', array( $this, 'ajax_get_post' ));
-	        	add_action('wp_ajax_nopriv_' . static::$prefix . '_get_post', array( $this, 'ajax_get_post' ));
+				add_action('wp_ajax_' . static::$prefix . '_get_post', array( $this, 'wp_ajax_get_post' ));
+				add_action('wp_ajax_nopriv_' . static::$prefix . '_get_post', array( $this, 'wp_ajax_get_post' ));
 			}
 		}
 
-        public static function plugin_uninstall() {
-            static::$instance->delete_option_uninstall();
-            parent::plugin_uninstall();
-        }
+		public static function plugin_uninstall() {
+			static::$instance->delete_option_uninstall();
+			parent::plugin_uninstall();
+		}
 
-        /* admin */
+		/* admin */
 
 		public function menu_page() {
-            $plugin = static::$instance;
+			$plugin = static::$instance;
 
-	 		global $title;
+			global $title;
 			?>
 			<div class="wrap">
-            <h2><?php echo esc_html($title); ?></h2>
+			<h2><?php echo esc_html($title); ?></h2>
 
 			<?php
 			if ( $plugin->save_menu_page() ) {
-	        	$save = function () use ( $plugin ) {
+				$save = function () use ( $plugin ) {
 					// get values.
-                    $options = array();
-                    foreach ( array_keys($plugin->get_options_context('default')) as $value ) {
+					$options = array();
+					foreach ( array_keys($plugin->get_options_context('default')) as $value ) {
 						$name = $plugin::$prefix . '_' . $value;
 						if ( ! isset($_POST[ $name ]) ) {
 							continue;
@@ -90,74 +91,72 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 						if ( $plugin->empty_notzero($_POST[ $name ]) ) {
 							continue;
 						}
-						$options[ $value ] = $_POST[ $name ];
+						$options[ $value ] = wp_unslash($_POST[ $name ]);
 					}
 					// save it.
-                    $updated = '<div class="updated"><p><strong>' . esc_html__('Options saved.') . '</strong></p></div>';
-                    $error = '<div class="error"><p><strong>' . esc_html__('Error: There was a problem.') . '</strong></p></div>';
-                    if ( ! empty($options) ) {
-                        $options = $plugin->get_options_context('input', null, array(), $options);
-                        if ( $plugin->update_option($plugin::$prefix, $options) ) {
-                            echo $updated;
-                        } else {
-                            echo $error;
-                        }
-                    } else {
-                        if ( $plugin->delete_option($plugin::$prefix) ) {
-                            echo $updated;
-                        } else {
-                            echo $updated;
-                        }
-                    }
+					$updated = '<div class="updated"><p><strong>' . esc_html__('Options saved.') . '</strong></p></div>';
+					$error = '<div class="error"><p><strong>' . esc_html__('Error: There was a problem.') . '</strong></p></div>';
+					if ( ! empty($options) ) {
+						$options = $plugin->get_options_context('input', null, array(), $options);
+						if ( $plugin->update_option($plugin::$prefix, $options) ) {
+							echo wp_kses_post($updated);
+						} else {
+							echo wp_kses_post($error);
+						}
+					} elseif ( $plugin->delete_option($plugin::$prefix) ) {
+						echo wp_kses_post($updated);
+					} else {
+						echo wp_kses_post($updated);
+					}
 				};
 				$save();
-	        } // save
+			} // save
 
-            // Show the form.
-            $options = $plugin->get_options_context('admin_form');
+			// Show the form.
+			$options = $plugin->get_options_context('admin_form');
 			?>
 
-		    <form id="<?php echo esc_attr($plugin::$prefix); ?>-admin-form" name="<?php echo esc_attr($plugin::$prefix); ?>-admin-form" method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>">
+			<form id="<?php echo esc_attr($plugin::$prefix); ?>-admin-form" name="<?php echo esc_attr($plugin::$prefix); ?>-admin-form" method="post" action="<?php echo esc_attr(sanitize_url(wp_unslash($_SERVER['REQUEST_URI']))); ?>">
 			<?php
-            // Use nonce for verification.
-            wp_nonce_field($plugin->plugin_basename, $plugin->plugin_name . '::' . __FUNCTION__);
+			// Use nonce for verification.
+			wp_nonce_field($plugin->plugin_basename, $plugin->plugin_name . '::' . __FUNCTION__);
 			?>
-		    <div id="poststuff">
+			<div id="poststuff">
 
-	        <p><label for="<?php echo esc_attr($plugin::$prefix); ?>_active"><input type="checkbox" id="<?php echo esc_attr($plugin::$prefix); ?>_active" name="<?php echo esc_attr($plugin::$prefix); ?>_active" value="1"<?php checked($options['active'], true); ?> /> <?php echo esc_html($plugin->plugin_title); ?> <?php esc_html_e('active?'); ?></label></p>
+			<p><label for="<?php echo esc_attr($plugin::$prefix); ?>_active"><input type="checkbox" id="<?php echo esc_attr($plugin::$prefix); ?>_active" name="<?php echo esc_attr($plugin::$prefix); ?>_active" value="1"<?php checked($options['active'], true); ?> /> <?php echo esc_html($plugin->plugin_title); ?> <?php esc_html_e('active?'); ?></label></p>
 
-	        <div class="postbox">
-	        	<div class="inside">
-		            <h4><?php esc_html_e('URLs'); ?></h4>
-		            <p><label for="<?php echo esc_attr($plugin::$prefix); ?>_home_url" style="display: inline-block; width: 10em; max-width: 25%;"><?php esc_html_e('Home URL'); ?></label>
-		            <input type="text" name="<?php echo esc_attr($plugin::$prefix); ?>_home_url" id="<?php echo esc_attr($plugin::$prefix); ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /><br />
-		        	<span class="description small" style="margin-left: 10em;"><?php esc_html_e('The base URL for all Single Page Permalinks. Defaults to network_home_url("/").'); ?></span></p>
+			<div class="postbox">
+				<div class="inside">
+					<h4><?php esc_html_e('URLs'); ?></h4>
+					<p><label for="<?php echo esc_attr($plugin::$prefix); ?>_home_url" style="display: inline-block; width: 10em; max-width: 25%;"><?php esc_html_e('Home URL'); ?></label>
+					<input type="text" name="<?php echo esc_attr($plugin::$prefix); ?>_home_url" id="<?php echo esc_attr($plugin::$prefix); ?>_home_url" style="width: 50%;" value="<?php echo esc_attr($options['home_url']); ?>" /><br />
+					<span class="description small" style="margin-left: 10em;"><?php esc_html_e('The base URL for all Single Page Permalinks. Defaults to network_home_url("/").'); ?></span></p>
 
-			        <p><label for="<?php echo esc_attr($plugin::$prefix); ?>_redirect_urls"><input type="checkbox" id="<?php echo esc_attr($plugin::$prefix); ?>_redirect_urls" name="<?php echo esc_attr($plugin::$prefix); ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], true); ?> /> <?php esc_html_e('Redirect normal permalinks to Single Page Permalinks?'); ?></label></p>
+					<p><label for="<?php echo esc_attr($plugin::$prefix); ?>_redirect_urls"><input type="checkbox" id="<?php echo esc_attr($plugin::$prefix); ?>_redirect_urls" name="<?php echo esc_attr($plugin::$prefix); ?>_redirect_urls" value="1"<?php checked($options['redirect_urls'], true); ?> /> <?php esc_html_e('Redirect normal permalinks to Single Page Permalinks?'); ?></label></p>
 
-	        	</div>
-	        </div>
+				</div>
+			</div>
 
-	        <div class="postbox">
-	        	<div class="inside">
-		            <h4><?php esc_html_e('Allowed Post Types'); ?></h4>
-		            <p><span class="description"><?php esc_html_e('Single Page Permalinks will only be active on the following post types.'); ?></span></p>
-		            <?php
-		            $post_types = array();
-		            $arr = get_post_types(array( 'public' => true ), 'objects');
-		            foreach ( $arr as $key => $value ) {
-		            	$post_types[ $key ] = $value->label;
-		            }
-		            foreach ( $post_types as $key => $value ) {
+			<div class="postbox">
+				<div class="inside">
+					<h4><?php esc_html_e('Allowed Post Types'); ?></h4>
+					<p><span class="description"><?php esc_html_e('Single Page Permalinks will only be active on the following post types.'); ?></span></p>
+					<?php
+					$post_types = array();
+					$arr = get_post_types(array( 'public' => true ), 'objects');
+					foreach ( $arr as $key => $value ) {
+						$post_types[ $key ] = $value->label;
+					}
+					foreach ( $post_types as $key => $value ) {
 						echo '<label style="display: inline-block; width: 50%;"><input type="checkbox" name="' . esc_attr($plugin::$prefix) . '_post_types[]" value="' . esc_attr($key) . '"';
 						if ( in_array($key, $options['post_types'], true) ) {
 							checked($key, $key);
 						}
 						echo '> ' . esc_html($value) . '</label>';
-		            }
-		            ?>
-	        	</div>
-	        </div>
+					}
+					?>
+				</div>
+			</div>
 
 			<div class="postbox">
 				<div class="inside">
@@ -171,7 +170,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 						'slideInFromLeft',
 					);
 					?>
-		            <p><label for="<?php echo esc_attr($plugin::$prefix); ?>_behavior_open" style="display: inline-block; width: 10em; max-width: 25%;"><?php esc_html_e('Open Post'); ?></label>
+					<p><label for="<?php echo esc_attr($plugin::$prefix); ?>_behavior_open" style="display: inline-block; width: 10em; max-width: 25%;"><?php esc_html_e('Open Post'); ?></label>
 					<select id="<?php echo esc_attr($plugin::$prefix); ?>_behavior_open" name="<?php echo esc_attr($plugin::$prefix); ?>_behavior_open">
 						<option value=""><?php esc_html_e('&mdash;&mdash;'); ?></option>
 						<?php foreach ( $animation_open as $value ) : ?>
@@ -187,7 +186,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 						'slideOutToLeft',
 					);
 					?>
-		            <p><label for="<?php echo esc_attr($plugin::$prefix); ?>_behavior_close" style="display: inline-block; width: 10em; max-width: 25%;"><?php esc_html_e('Close Post'); ?></label>
+					<p><label for="<?php echo esc_attr($plugin::$prefix); ?>_behavior_close" style="display: inline-block; width: 10em; max-width: 25%;"><?php esc_html_e('Close Post'); ?></label>
 					<select id="<?php echo esc_attr($plugin::$prefix); ?>_behavior_close" name="<?php echo esc_attr($plugin::$prefix); ?>_behavior_close">
 						<option value=""><?php esc_html_e('&mdash;&mdash;'); ?></option>
 						<?php foreach ( $animation_close as $value ) : ?>
@@ -195,27 +194,27 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 						<?php endforeach; ?>
 					</select></p>
 
-			        <p><label for="<?php echo esc_attr($plugin::$prefix); ?>_behavior_escape"><input type="checkbox" id="<?php echo esc_attr($plugin::$prefix); ?>_behavior_escape" name="<?php echo esc_attr($plugin::$prefix); ?>_behavior_escape" value="1"<?php checked($options['behavior_escape'], true); ?> /> <?php esc_html_e('Escape key closes currently displayed post?'); ?></label></p>
+					<p><label for="<?php echo esc_attr($plugin::$prefix); ?>_behavior_escape"><input type="checkbox" id="<?php echo esc_attr($plugin::$prefix); ?>_behavior_escape" name="<?php echo esc_attr($plugin::$prefix); ?>_behavior_escape" value="1"<?php checked($options['behavior_escape'], true); ?> /> <?php esc_html_e('Escape key closes currently displayed post?'); ?></label></p>
 
 				</div>
 			</div>
 
-	        <?php submit_button(__('Update'), array( 'primary', 'large' ), 'save'); ?>
+			<?php submit_button(__('Update'), array( 'primary', 'large' ), 'save'); ?>
 
-	        </div><!-- poststuff -->
-	    	</form>
+			</div><!-- poststuff -->
+			</form>
 
 			</div><!-- wrap -->
 			<?php
 		}
 
-	 	public function edit_form_after_title( $post ) {
+		public function edit_form_after_title( $post ) {
 			if ( $url = $this->singlepagepermalink($post) ) {
-		 		?>
-		 		<div class="inside" style="padding: 0 10px; color: #666;"><strong><?php esc_html_e('Single Page Permalink:'); ?></strong> <a href="<?php echo esc_url($url); ?>" target="_blank"><?php echo esc_html($url); ?></a></div>
-		 		<?php
+				?>
+				<div class="inside" style="padding: 0 10px; color: #666;"><strong><?php esc_html_e('Single Page Permalink:'); ?></strong> <a href="<?php echo esc_url($url); ?>" target="_blank"><?php echo esc_html($url); ?></a></div>
+				<?php
 			}
-	 	}
+		}
 
 		/* public */
 
@@ -237,14 +236,15 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 			if ( ! $this->enqueue_scripts ) {
 				return;
 			}
-			wp_enqueue_script(static::$prefix . '-init', plugins_url('/assets/js/single-page-permalinks-init' . ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '.min' : '' ) . '.js', __FILE__), array( 'jquery' ), $this->get_plugin_version(), true);
+            $min = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+			wp_enqueue_script(static::$prefix . '-init', plugins_url('/assets/js/single-page-permalinks-init' . $min . '.js', __FILE__), array( 'jquery' ), $this->get_plugin_version(), true);
 			$data = array(
 				'ajaxurl' => esc_url(admin_url() . 'admin-ajax.php'),
-			    'prefix' => static::$prefix,
-			    'home_url' => $this->get_home_url(),
-			    'behavior_open' => $this->get_options_context('db', 'behavior_open'),
-			    'behavior_close' => $this->get_options_context('db', 'behavior_close'),
-			    'behavior_escape' => $this->get_options_context('db', 'behavior_escape'),
+				'prefix' => static::$prefix,
+				'home_url' => $this->get_home_url(),
+				'behavior_open' => $this->get_options_context('db', 'behavior_open'),
+				'behavior_close' => $this->get_options_context('db', 'behavior_close'),
+				'behavior_escape' => $this->get_options_context('db', 'behavior_escape'),
 			);
 			wp_localize_script(static::$prefix . '-init', static::$prefix, $data);
 			wp_enqueue_style(static::$prefix, plugins_url('/assets/css/single-page-permalinks.css', __FILE__), array(), $this->get_plugin_version());
@@ -269,14 +269,14 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 			}
 		}
 
-		public function post_link( $permalink, $post_or_ID = 0, $leavename_or_sample = false ) {
+		public function post_link( $permalink, $post_or_id = 0, $leavename_or_sample = false ) {
 			if ( current_filter() === 'page_link' ) {
-				$post = get_post($post_or_ID);
+				$post = get_post($post_or_id);
 				if ( empty($post) || is_wp_error($post) ) {
 					return $permalink;
 				}
 			} else {
-				$post = $post_or_ID;
+				$post = $post_or_id;
 			}
 			if ( $url = $this->singlepagepermalink($post) ) {
 				$permalink = $url;
@@ -286,10 +286,10 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 
 		/* ajax */
 
-		public function ajax_get_post() {
-		    if ( ! isset($_REQUEST['post_name']) ) {
-		    	wp_die();
-		    }
+		public function wp_ajax_get_post() {
+			if ( ! isset($_REQUEST['post_name']) ) {
+				wp_die( -1 );
+			}
 			$args = array(
 				'no_found_rows' => true,
 				'nopaging' => true,
@@ -299,13 +299,13 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 				'orderby' => 'title',
 				'order' => 'ASC',
 				'suppress_filters' => false,
-	        );
+			);
 			if ( is_numeric($_REQUEST['post_name']) && (int) $_REQUEST['post_name'] === 0 ) {
 				$args['include'] = $this->get_option('page_on_front');
 			} elseif ( ! empty($_REQUEST['post_name']) ) {
-				$args['name'] = $_REQUEST['post_name'];
+				$args['name'] = wp_unslash($_REQUEST['post_name']);
 			} else {
-				wp_die();
+				wp_die( -1 );
 			}
 			// posts
 			$posts = query_posts($args);
@@ -337,31 +337,31 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 				wp_die();
 			}
 			if ( strpos(current_action(), 'wp_ajax_') !== false ) {
-			    echo $str;
-		        wp_die();
+				echo $str;
+				wp_die();
 			}
 			return $str;
 		}
 
-	    /* functions */
+		/* functions */
 
-        protected function get_options_default() {
-            return apply_filters(static::$prefix . '_options_default',
-                array(
-                    'active' => false,
-                    'home_url' => network_home_url('/'),
-                    'redirect_urls' => false,
-                    'post_types' => array(),
-                    'behavior_open' => 'slideInFromBottom',
-                    'behavior_close' => 'slideOutToBottom',
-                    'behavior_escape' => false,
-                )
-            );
-        }
+		protected function get_options_default() {
+			return apply_filters(static::$prefix . '_options_default',
+				array(
+					'active' => false,
+					'home_url' => network_home_url('/'),
+					'redirect_urls' => false,
+					'post_types' => array(),
+					'behavior_open' => 'slideInFromBottom',
+					'behavior_close' => 'slideOutToBottom',
+					'behavior_escape' => false,
+				)
+			);
+		}
 
-	    private function get_home_url() {
-	    	return trailingslashit(set_url_scheme($this->get_options_context('db', 'home_url', network_home_url('/'))));
-	    }
+		private function get_home_url() {
+			return trailingslashit(set_url_scheme($this->get_options_context('db', 'home_url', network_home_url('/'))));
+		}
 
 		private function get_post_ID_post() {
 			global $post;
@@ -371,12 +371,10 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 			if ( empty($post_ID) && is_singular() ) {
 				// some plugins (buddypress) hide the real post_id in queried_object_id.
 				global $wp_query;
-				if ( isset($wp_query->queried_object_id) ) {
-					if ( ! empty($wp_query->queried_object_id) ) {
-						$post_ID = $wp_query->queried_object_id;
-						if ( isset($wp_query->queried_object) ) {
-							$my_post = $wp_query->queried_object;
-						}
+				if ( isset($wp_query->queried_object_id) && ! empty($wp_query->queried_object_id) ) {
+					$post_ID = $wp_query->queried_object_id;
+					if ( isset($wp_query->queried_object) ) {
+						$my_post = $wp_query->queried_object;
 					}
 				}
 			}
@@ -385,7 +383,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 
 		private function post_is_singlepage( $post = 0 ) {
 			if ( empty($post) || ! is_object($post) ) {
-				if ( $this->is_front_end() ) {
+				if ( $this->is_public() ) {
 					list($post_ID, $post) = $this->get_post_ID_post();
 				} else {
 					global $post;
@@ -394,7 +392,7 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 					return false;
 				}
 			}
-            $post_types = $this->get_options_context('db', 'post_types');
+			$post_types = $this->get_options_context('db', 'post_types');
 			if ( ! in_array($post->post_type, $post_types, true) ) {
 				return false;
 			}
@@ -414,8 +412,8 @@ if ( ! class_exists('Halftheory_Single_Page_Permalinks', false) && class_exists(
 			}
 			return $this->get_home_url() . '#' . $post->post_name;
 		}
-    }
+	}
 
 	// Load the plugin.
-    Halftheory_Single_Page_Permalinks::get_instance(true, plugin_basename(__FILE__));
+	Halftheory_Single_Page_Permalinks::get_instance(true, plugin_basename(__FILE__));
 endif;
